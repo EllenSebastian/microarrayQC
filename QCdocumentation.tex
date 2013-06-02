@@ -1,0 +1,188 @@
+\documentclass[10pt]{article}
+\usepackage{amsmath}  % math symbols
+\usepackage[top=1in, bottom=1in, left=1in, right=1in]{geometry}
+\usepackage{multicol} % in case you want to use multiple columns
+\usepackage{color}
+\setlength{\columnsep}{1pc}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{graphicx}
+\newcommand{\fquote}{``}
+\title{\bf{\underline{Documentation: microarray data processing in R}}}
+\author{Ellen Sebastian} \date{June 2, 2013}
+
+
+\begin{document}
+\maketitle
+Miscellaneous tips for the R-uninitiated: 
+\begin{itemize}
+\item The files to be processed must be in R's current working directory. Use R functions \texttt{getwd()} and \texttt{setwd()} to view and change the working directory.
+\item Any arguments asking for a vector take multiple arguments with the syntax \texttt{c(item1,item2...)}. They can also take single arguments of the vector type specified. (example: \texttt{BGsub.methods = c("edwards","subtract")} or \texttt{BGsub.methods="edwards"}.
+\item Arguments listed with an = after the name in this document have default parameters. You do not need to provide these parameters unless your desired argument differs from the default.
+\item all output files will be deposited in the current working directory.
+\item R has enough memory to handle about 60 arrays at once. If you have more than 60 arrays, you should do them in batches and combine at the end.
+\end{itemize}
+  \rule{\linewidth}{0.4pt}
+  \texttt{normWrapper} \hspace{1in} performs all other functions in sequence.\\
+    \rule{\linewidth}{0.4pt}
+    
+    \textbf{Usage}:\\
+\texttt{normWrapper(galFile,files=dir(pattern="*\textbackslash\textbackslash.gpr\$"),fileType=".gpr",BGsub.methods="edwards",\\ \indent norm.Methods="loess",scale=FALSE,prenormFilterFun="empty",
+                      filterFlaggedSpots=TRUE,\\ \indent filterPercentPresent=TRUE,percentPresentThreshold=0.9,filterRGR=FALSE,filterControls=FALSE,\\ \indent RGRthreshold=c(0.5,2),
+                      PDFName="MAD.SD.pdf",verbose=TRUE,hSQindex=5,nameIndex=4,\\ \indent oligoIndex=11,duplicatesFile="duplicates.txt",boxplotname="boxplot.pdf")}\\
+     \textbf{Arguments:}
+     \begin{itemize}
+       \item \texttt{galFile} : (string) the galfile used to extract gene names and IDs. The columns containing the gene IDs and gene names must match those specified by \texttt{hSQindex} and \texttt{NameIndex.} (integer) If you plan to filter out controls, the columns containing Oligo ID's must match those specified by \texttt{OligoIndex.}  (integer )These scripts assume that there are 55 lines before adata starts in the gal file. 
+	\item \texttt{files} (string vector): which files to process. Defaults to all .gpr files in the directory.
+    	\item \texttt{fileType} : (string) \fquote .srr " or \fquote .gpr". What file should be used for filtering?
+     	\item \texttt{BGsub.methods}: (string vector) which background subtraction methods should be used? Choices are "none", "subtract", "half", "minimum","movingmin","edwards","normexp",or "rma".\\ See \texttt{http://rss.acs.unt.edu/Rdoc/library/limma/html/backgroundcorrect.html} for more information about Limma background subtraction.
+     	\item \texttt{norm.Methods} (string vector) which normalization methods should be used? Choices are "none", "median", "loess", "printtiploess", "composite", "control" and "robustspline".  \\See \texttt{http://rss.acs.unt.edu/Rdoc/library/limma/html/normalizeWithinArrays.html} for more information about Limma normalization.
+     	\item \texttt{scale} (logical) should scale between-array normalization be used? \\ \texttt{http://rss.acs.unt.edu/Rdoc/library/limma/html/normalizebetweenarrays.html} for more information about between-array normalization. 
+     	 \item \texttt{prenormFilterFun} (string) What function should be used to assign weights to spots before normalization? Choices are: \begin{itemize}\item "none" : Assigns all spots weight 1. 
+\item "empty": assigns spots with name "EMPTY" weight 0, all others 1. 
+\item "flagempty" : assigns flagged and "EMPTY" spots weight 1, alll others 0. 
+\item "control": assigns control spots and "EMPTY" spots weight 0, all others 1. NOTE! to use this option, you must provide a .gal file with oligoIDs in column \texttt{oligoIndex}\end{itemize} To specify additional pre-Normalization filter functions, edit the function \texttt{stringToFun.} 
+     	\item \texttt{filterFlaggedSpots} (logical) Should flagged spots be filtered out after normalization?
+     	\item \texttt{filterPercentPresent} (logical) Should spots with fewer than \texttt{percentPresentThreshold} spots present across arrays be filtered out after normalization?
+     	\item \texttt{percentPresentThreshold} (number between 0 and 1) the lower bound of percent of spots present that is allowed in the filtered data.
+     	\item \texttt{removeRGR} (logical) should spots with red-green ratios between the parameters of \texttt{RGRthreshold} be filtered out?
+     	\item \texttt{RGRthreshold} (2-element numerical vector) Spots with red-green ratio between {RGRthreshold[1]} and \texttt{RGRthreshold[2]} are filtered out. For example if \texttt{RGRthreshold=c(0.5,2)}, spots with red-green ratio below 0.5 or above 2 will be left in the data.
+     	\item \texttt{PDFName} (string) The name of the pdf where MAD/SD plots will be deposited. 
+     	\item \texttt{verbose} (logical) should progress reports be printed to the screen?
+     	\item \texttt{hSQindex} (numerical) column in the .gal file containing SUIDs. 
+     	\item \texttt{nameIndex} (numerical) column in the .gal file containing full gene names.
+      	\item \texttt{oligoIndex} (numerical) column in the .gal file containing oligoIDs.
+     	\item \texttt{duplicatesFile} (string) a file contianing a logical vector of which rows in these arrays are duplicates. This file makes \texttt{AvgDupRows} run much faster. It will be generated the first time you run \texttt{AvgDupRows} in this directory. It is also sufficient to use a duplicate file generated from a run of \texttt{AvgDupRows} on a separate, identical print run.    	     	     	     	     	     	     	     	     	     	     	
+     \end{itemize}
+     \textbf{Return Value:}\\ none.
+ \\
+  \rule{\linewidth}{0.4pt}
+  \texttt{SRRtoGPR} \hspace{1in} Converts .srr files to .gpr files\\
+    \rule{\linewidth}{0.4pt}
+\textbf{Usage:}\\
+\texttt{SRRtoGPR(files=dir(pattern="*\textbackslash\textbackslash.srr\$"),galFile,hSQindex=5,nameIndex=4)}
+\begin{itemize}
+     	\item \texttt{files} (string vector) the file names to be converted. 
+     	\item \texttt{galFile} : the gal file that will be used to fill in gene names and SUIDs in the output. 
+      	\item \texttt{hSQIndex} (numerical) column in the .gal file containing SUIDs. 
+      	\item \texttt{nameIndex} (numerical) column in the .gal file containing full gene names.
+   \end{itemize}
+
+\textbf{Output}:\\
+One .gpr file corresponding to each .srr file.\\
+ \textbf{Return Value:}\\ 
+ A string vector of the output filenames.
+
+  \rule{\linewidth}{0.4pt}
+  \texttt{BGsubandNormalize} \hspace{1in} performs background subtraction and normalization in Limma.\\
+    \rule{\linewidth}{0.4pt}
+\textbf{Usage:}\\
+\texttt{BGsubandNormalize(BGsub.methods="edwards",norm.Methods="loess",galFile,verbose=TRUE, \\ \indent files=dir(pattern="*\textbackslash\textbackslash.gpr\$"),
+                            scale=FALSE,filterFun="empty",oligoIndex=11,hSQindex=5,\\ \indent nameIndex=4)}\\
+\begin{itemize}
+    	\item \texttt{BGsub.methods}: (string vector) which background subtraction methods should be used? Choices are "none", "subtract", "half", "minimum","movingmin","edwards","normexp",or "rma".\\ See \texttt{http://rss.acs.unt.edu/Rdoc/library/limma/html/backgroundcorrect.html} for more information about Limma background subtraction.
+     	\item \texttt{norm.Methods} (string vector) which normalization methods should be used? Choices are "none", "median", "loess", "printtiploess", "composite", "control" and "robustspline".  \\See \texttt{http://rss.acs.unt.edu/Rdoc/library/limma/html/normalizeWithinArrays.html} for more information about Limma normalization.
+     	\item \texttt{gaFile}: (string) the .gal file for the data to be processed.
+     	\item \texttt{scale} (logical) should scale between-array normalization be used? \\ \texttt{http://rss.acs.unt.edu/Rdoc/library/limma/html/normalizebetweenarrays.html} for more information about between-array normalization. 
+     	 \item \texttt{filterFun} (string) What function should be used to assign weights to spots before normalization? Choices are: \begin{itemize}\item "none" : Assigns all spots weight 1. 
+\item "empty": assigns spots with name "EMPTY" weight 0, all others 1. 
+\item "flagempty" : assigns flagged and "EMPTY" spots weight 1, alll others 0. 
+\item "control": assigns control spots and "EMPTY" spots weight 0, all others 1. NOTE! to use this option, you must provide a .gal file with oligoIDs in column \texttt{oligoIndex}\end{itemize} To specify additional pre-Normalization filter functions, edit the function \texttt{stringToFun.} 
+     
+
+     	\item \texttt{hSQindex} (numerical) column in the .gal file containing SUIDs. 
+     	\item \texttt{nameIndex} (numerical) column in the .gal file containing full gene names.
+      	\item \texttt{oligoIndex} (numerical) column in the .gal file containing oligoIDs.
+\end{itemize}
+\textbf{Output}:\\
+filtered data matrix with filenames of the format \fquote Prenormfiltered-\{Pre-normalization filter function\}\textunderscore\{ Normalization method\}\textunderscore\{BG subtraction method\}.txt". the first column is gene names, the second SUIDs; each successive column contains normalized and subtracted red-green ratios for a single array. Spots are ordered in the same order they were in the GPR file, with no averaging.\\
+Each data treatment generates a single output file containing all arrays.\\
+  \textbf{Return Value:}\\ 
+  a string vector of the output filename(s).\\
+  \rule{\linewidth}{0.4pt}
+  \texttt{filter} \hspace{1in} Filters data matrices by the criteria provided.\\
+    \rule{\linewidth}{0.4pt}
+\textbf{Usage:}\\
+  \texttt{filter(filterFiles,galFile=NULL,fileType=".gpr",oligoIndex=NULL,filterControls=FALSE,\\ 
+\indent filterFlaggedSpots=TRUE, filterPercentPresent=FALSE,
+                 percentPresentThreshold=TRUE,\\ \indent filterRGR=FALSE, RGRthreshold=c(0.5,2), verbose=TRUE)}
+\begin{itemize}
+     	\item \texttt{filterFiles} (string vector) The names of the files to be filtered. \emph{Tip} : \texttt{BGsubandNormalize} returns a string vector of normalized files, which you can pass \texttt{filter}.
+     	\texttt{galFile}: (string) the name of the .gal file containing oligoIDs. It is only necessary to provie this argument if yo plan to filter out control spots.
+     	\texttt{oligoIndex}: (numerical) the column in the .gal file containing oligoIDs.
+     	
+     	     	\item \texttt{hSQindex} (numerical) column in the .gal file containing SUIDs. 
+     	     	\item \texttt{nameIndex} (numerical) column in the .gal file containing full gene names.
+
+     	      	
+       	\item \texttt{filterFlaggedSpots} (logical) Should flagged spots be filtered out after normalization?
+       	\item \texttt{filterPercentPresent} (logical) Should spots with fewer than \texttt{percentPresentThreshold} spots present across arrays be filtered out after normalization?
+       	\item \texttt{percentPresentThreshold} (number between 0 and 1) the lower bound of percent of spots present that is allowed in the filtered data.
+       	\item \texttt{filterRGR} (logical) should spots with red-green ratios between the parameters of \texttt{RGRthreshold} be filtered out?
+       	\item \texttt{RGRthreshold} (2-element numerical vector) Spots with red-green ratio between {RGRthreshold[1]} and \texttt{RGRthreshold[2]} are filtered out. For example if \texttt{RGRthreshold=c(0.5,2)}, spots with red-green ratio below 0.5 or above 2 will be left in the data.
+  		\item \texttt{verbose} (logical) should progress reports be printed to the console?
+
+\end{itemize}
+
+\textbf{Output}:\\ Files with data matrices original to those in \texttt{filterfiles} but with spots failing the criteria changed to NA. Filenames are: \fquote \{filtering criteria\}\textunderscore input Filename.txt".\\
+  \textbf{Return Value:}\\ a string vector of filtered file names.\\
+  \rule{\linewidth}{0.4pt}
+    \texttt{AvgDupRows} \hspace{1in} Combines duplicate spot rows in a data matrix into one, containing the average \\ \textcolor{white}{.} \hspace{1.7in}value for all duplicates\\
+      \rule{\linewidth}{0.4pt}
+\textbf{Usage:}\\
+\texttt{AvgDupRows(files,dupFile="duplicates.txt")}
+\begin{itemize}
+     	\item \texttt{files} (string vector) The names of the files to be filtered. 
+     	\emph{Tip} : \texttt{filter} returns a string vector of normalized files, which you can pass \texttt{AvgDupRows}.
+     	\item \texttt{duplicatesFile} (string) a file contianing a logical vector of which rows in these arrays are duplicates. This file makes \texttt{AvgDupRows} run much faster. It will be generated the first time you run \texttt{AvgDupRows} in this directory. It is also sufficient to use a duplicate file generated from a run of \texttt{AvgDupRows} on a separate, identical print run.    	     	     	     	     	     	     	     	     	     	     	
+   
+\end{itemize}
+
+\textbf{Output}:\\
+files containing data matrices identical to the input, except rows with duplicate SUIDs have been combined to one so that each value is an average of all spots with that SUID. Averaging is done on NA-omitted data, so NAs will appear only if \emph{all} duplicates have NA for that data point. Filenames will be of the form \fquote \{Avg\}\textunderscore input Filename.txt"\\
+  \textbf{Return Value:}\\ A string vector of averaged filenames.\\\\
+  \rule{\linewidth}{0.4pt}
+  \texttt{ArrayBoxPlot} \hspace{1in} Box-plots all the red-green ratios in a data matrix.\\
+    \rule{\linewidth}{0.4pt}
+\textbf{Usage:}\\
+\texttt{ ArrayBoxPlot(files,outFilename="Boxplots.pdf")}
+\begin{itemize}
+     	\item \texttt{files}: (string vector) the files to be boxplotted. These should contain data matrices of the form returned by \texttt{BGsubandNormalize}, \texttt{filter}, or \texttt{AvgDupRows}; that is, they contain gene names and IDs in the first two columns, array names in the first row, and red-green ratios in the rest of the file.
+     	\item \texttt{outFilename}: (string) :  the .pdf name where boxplots will be deposited.
+\end{itemize}
+
+\textbf{Output}:\\ A pdf containing boxplots of the red-green ratios found in the provided file. Each plot comes from a single file, and each box represents a single array.\\
+  \textbf{Return Value:}\\  none.\\ %change if time!!
+  \rule{\linewidth}{0.4pt}
+  \texttt{ReplicateDiffPlot} \hspace{.6in} Plots distance between replicate spots vs. standard deviation of all spots.\\
+    \rule{\linewidth}{0.4pt}
+\textbf{Usage:}\\
+\texttt{ReplicateDiffPlot(files,PDFname="MAD.SD.pdf")}
+\textbf{Arguments}:
+  \begin{itemize}
+     	\item \texttt{files} (string vector): the files to be plotted. These should contain data matrices of the form returned by \texttt{BGsubandNormalize}, \texttt{filter}, or \texttt{AvgDupRows}; that is, they contain gene names and IDs in the first two columns, array names in the first row, and red-green ratios in the rest of the file.
+     	\item \texttt{PDFname} (string): the name of the .pdf where plots will be deposited.
+    
+\end{itemize}
+
+\textbf{Output}: \begin{itemize}
+\item a .pdf plotting distance between duplicate spots (y-axis) vs. standard deviation of all spots (x-axis). Each color represents a data treatment or input file; each data point is an array. Arrays are labeled on the plot only if there is only 1 input file.
+\item an input file of name \fquote \{outFilename\}\textunderscore ReplicateInfo.txt". This contains data about the standard deviation, replicate spot distance, and  number of spots for each array and for each input file.
+\end{itemize}
+  \textbf{Return Value:}\\ 
+none.\\
+  \rule{\linewidth}{0.4pt}
+  \texttt{subd0} \hspace{.6in} subtract the average of day-0 samples from all other samples.\\
+    \rule{\linewidth}{0.4pt}
+\textbf{Usage:}\\
+\texttt{subd0(files,ZeroCols=c(3,4))}\\
+\textbf{Arguments}:
+\begin{itemize}
+\item \texttt{files} (string vector) : the files to be processed.
+\item \texttt{ZeroCols} (numerical vector) : the columns in the input files that correspond to day 0 samples. \emph{column indices include gene-ID columns; so if there were 2 columns of gene IDs, then two columns of day-0 samples, \texttt{ZeroCols=c(3,4)}}.\\
+\textbf{Output}:\\
+Files with name \fquote \{d0subbed\textunderscore InputFilename\}, which are identical to the input file, except the average of the day - 0 columns have been subtracted from all other columns, including the day - 0 columns themselves.\\
+\textbf{Return Value}:\\
+A string vector of the filenames of the day 0-subtracted files.
+\end{itemize}
+  \end{document}
